@@ -62,6 +62,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.LaunchedEffect
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -77,60 +78,44 @@ fun registerscreen(navController: NavHostController, isEdit: Boolean = false) {
     var visitDate by remember { mutableStateOf("") }
 
     val context = LocalContext.current
-
     var isLoading by remember { mutableStateOf(false) }
-
     var showDatePicker by remember { mutableStateOf(false) }
-
     val datePickerState = rememberDatePickerState()
 
-    val interactionSource = remember { MutableInteractionSource() }
-
     var visible by remember { mutableStateOf(false) }
-
     val scope = rememberCoroutineScope()
-
     var requestId by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        visible = true
-    }
+    LaunchedEffect(Unit) { visible = true }
 
     BackHandler {
-        visible = false   // 🔥 trigger exit animation
-
+        visible = false
         scope.launch {
-            delay(400)    // wait for exit animation
+            delay(400)
             navController.popBackStack()
         }
     }
 
-        val isFormValid =
-                    name.isNotBlank() &&
-                    phone.length == 10 &&
-                    purpose.isNotBlank() &&
-                    persontomeet.isNotBlank() &&
-                    visitDate.isNotBlank()
+    val isFormValid =
+        name.isNotBlank() &&
+                phone.length == 10 &&
+                purpose.isNotBlank() &&
+                persontomeet.isNotBlank() &&
+                visitDate.isNotBlank()
 
-        //Your registration UI will go here
-
+    // 🔁 LOAD DATA FOR EDIT MODE
     LaunchedEffect(isEdit) {
         if (!isEdit) return@LaunchedEffect
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-            ?: return@LaunchedEffect
-
-        val dbRef = FirebaseDatabase.getInstance()
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        FirebaseDatabase.getInstance()
             .getReference("visitorRequests")
-
-        dbRef
             .orderByChild("uid")
             .equalTo(uid)
             .get()
             .addOnSuccessListener { snapshot ->
                 snapshot.children.firstOrNull()?.let { child ->
-                    requestId = child.key   // 🔥 THIS WAS MISSING
-
+                    requestId = child.key
                     name = child.child("name").value?.toString() ?: ""
                     phone = child.child("phone").value?.toString() ?: ""
                     purpose = child.child("purpose").value?.toString() ?: ""
@@ -156,59 +141,44 @@ fun registerscreen(navController: NavHostController, isEdit: Boolean = false) {
         AnimatedVisibility(
             visible = visible,
             enter = slideInHorizontally(
-                initialOffsetX = { fullWidth -> fullWidth }, // 👈 from right
+                initialOffsetX = { it },
                 animationSpec = tween(200)
-            ) + fadeIn(animationSpec = tween(200)),
-
+            ) + fadeIn(),
             exit = slideOutHorizontally(
-                targetOffsetX = { fullWidth -> fullWidth }, // 👈 to right
+                targetOffsetX = { it },
                 animationSpec = tween(200)
-            ) + fadeOut(animationSpec = tween(200))
+            ) + fadeOut()
         ) {
             Scaffold(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background( // ✅ GRADIENT HERE
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFF2D30E3),
-                                Color(0xFF8D6AAB),
-                                Color(0xFF135DC4)
-                            )
-                        )
-                    ),
-                topBar ={
-                    TopAppBar(
-                        title ={Text(text = "Enter Details", fontSize = 30.sp)},
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color(0xFF4030D2),
-                            titleContentColor = Color.White
-                        )
-                    )
-                },
+                topBar = {}, // 🔥 REMOVED TOP BAR
                 containerColor = Color.Transparent
-            ) {padding->
+            ) { padding ->
+
                 Column(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
                         .padding(padding)
-                        .padding(horizontal = 14.dp, vertical = 12.dp)
-                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+
+                    // ✅ VISIT-HISTORY STYLE TITLE
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Enter Details",
+                        fontSize = 35.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // ---------- FORM ----------
                     OutlinedTextField(
                         value = name,
-                        onValueChange = {name = it},
-                        enabled = !isLoading,
-                        label = {Text("Full Name")},
-                        leadingIcon = {
-                            Icon(
-                                Icons.Rounded.AccountCircle,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                        },
-                        supportingText = {
-                            Text("Enter your full name as per ID", color = Color.White)
-                        },
+                        onValueChange = { name = it },
+                        label = { Text("Full Name") },
+                        leadingIcon = { Icon(Icons.Rounded.AccountCircle, null, tint = Color.White) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         colors = outlinedFieldColors()
@@ -218,32 +188,14 @@ fun registerscreen(navController: NavHostController, isEdit: Boolean = false) {
 
                     OutlinedTextField(
                         value = phone,
-                        onValueChange = { input ->
-                            // allow only digits & max 10 characters
-                            if (input.length <= 10 && input.all { it.isDigit() }) {
-                                phone = input
-                            }
+                        onValueChange = {
+                            if (it.length <= 10 && it.all(Char::isDigit)) phone = it
                         },
-                        enabled = !isLoading,
                         label = { Text("Mobile Number") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Rounded.Phone,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                        },
-                        supportingText = {
-                            Text(
-                                text = "Enter ${phone.length}/10 digits Only",
-                                color = Color.White
-                            )
-                        },
+                        leadingIcon = { Icon(Icons.Rounded.Phone, null, tint = Color.White) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number
-                        ),
                         colors = outlinedFieldColors()
                     )
 
@@ -251,16 +203,9 @@ fun registerscreen(navController: NavHostController, isEdit: Boolean = false) {
 
                     OutlinedTextField(
                         value = purpose,
-                        onValueChange = {purpose = it},
-                        enabled = !isLoading,
-                        label = {Text("Purpose of Visit")},
-                        leadingIcon = {
-                            Icon(
-                                Icons.Rounded.Edit,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                        },
+                        onValueChange = { purpose = it },
+                        label = { Text("Purpose of Visit") },
+                        leadingIcon = { Icon(Icons.Rounded.Edit, null, tint = Color.White) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         colors = outlinedFieldColors()
@@ -270,16 +215,9 @@ fun registerscreen(navController: NavHostController, isEdit: Boolean = false) {
 
                     OutlinedTextField(
                         value = persontomeet,
-                        onValueChange = {persontomeet = it},
-                        enabled = !isLoading,
-                        label = {Text("Person to meet")},
-                        leadingIcon = {
-                            Icon(
-                                Icons.Rounded.Person,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                        },
+                        onValueChange = { persontomeet = it },
+                        label = { Text("Person to Meet") },
+                        leadingIcon = { Icon(Icons.Rounded.Person, null, tint = Color.White) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         colors = outlinedFieldColors()
@@ -287,51 +225,16 @@ fun registerscreen(navController: NavHostController, isEdit: Boolean = false) {
 
                     Spacer(Modifier.height(12.dp))
 
-//                Box(
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .clickable(enabled = !isLoading) {
-//                            showDatePicker = true
-//                        }
-//                ) {
-//                    OutlinedTextField(
-//                        value = visitDate,
-//                        onValueChange = {},
-//                        enabled = false,
-//                        readOnly = true,
-//                        label = { Text("Visit Date") },
-//                        leadingIcon = {
-//                            Icon(
-//                                Icons.Rounded.DateRange,
-//                                contentDescription = null,
-//                                tint = Color.White
-//                            )
-//                        },
-//                        modifier = Modifier.fillMaxWidth(),
-//                        shape = RoundedCornerShape(16.dp),
-//                        colors = outlinedFieldColors()
-//                    )
-//                }
-
                     OutlinedTextField(
                         value = visitDate,
                         onValueChange = {},
                         readOnly = true,
-                        enabled = !isLoading,
                         label = { Text("Visit Date") },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Rounded.DateRange,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                        },
+                        leadingIcon = { Icon(Icons.Rounded.DateRange, null, tint = Color.White) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .onFocusChanged { focusState ->
-                                if (focusState.isFocused && !isLoading) {
-                                    showDatePicker = true
-                                }
+                            .onFocusChanged {
+                                if (it.isFocused && !isLoading) showDatePicker = true
                             },
                         shape = RoundedCornerShape(16.dp),
                         colors = outlinedFieldColors()
@@ -342,18 +245,14 @@ fun registerscreen(navController: NavHostController, isEdit: Boolean = false) {
                             onDismissRequest = { showDatePicker = false },
                             confirmButton = {
                                 TextButton(onClick = {
-                                    val millis = datePickerState.selectedDateMillis
-                                    if (millis != null) {
-                                        val formatter = java.text.SimpleDateFormat(
+                                    datePickerState.selectedDateMillis?.let {
+                                        visitDate = java.text.SimpleDateFormat(
                                             "dd MMM yyyy",
                                             java.util.Locale.getDefault()
-                                        )
-                                        visitDate = formatter.format(java.util.Date(millis))
+                                        ).format(java.util.Date(it))
                                     }
                                     showDatePicker = false
-                                }) {
-                                    Text("OK")
-                                }
+                                }) { Text("OK") }
                             },
                             dismissButton = {
                                 TextButton(onClick = { showDatePicker = false }) {
@@ -365,22 +264,17 @@ fun registerscreen(navController: NavHostController, isEdit: Boolean = false) {
                         }
                     }
 
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
 
                     GradientButton(
                         text = if (isLoading) "Submitting..." else "Submit Request",
                         enabled = isFormValid && !isLoading,
                         onClick = {
                             isLoading = true
+                            val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@GradientButton
+                            val dbRef = FirebaseDatabase.getInstance().getReference("visitorRequests")
 
-//                        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@GradientButton
-                            val uid = FirebaseAuth.getInstance().currentUser?.uid
-                            if (uid == null) {
-                                isLoading = false
-                                return@GradientButton
-                            }
-
-                            val visitorData = details(
+                            val data = details(
                                 requestId = requestId ?: "",
                                 uid = uid,
                                 name = name,
@@ -389,355 +283,38 @@ fun registerscreen(navController: NavHostController, isEdit: Boolean = false) {
                                 personToMeet = persontomeet,
                                 visitDate = visitDate,
                                 status = "PENDING",
-                                timestamp = com.google.firebase.database.ServerValue.TIMESTAMP
+                                timestamp = com.google.firebase.database.ServerValue.TIMESTAMP,
+
                             )
 
-                            val dbRef = FirebaseDatabase.getInstance()
-                                .getReference("visitorRequests")
-
                             val task = if (isEdit && requestId != null) {
-                                // 🔁 UPDATE existing request
-                                dbRef.child(requestId!!).setValue(visitorData)
+                                dbRef.child(requestId!!).setValue(data)
                             } else {
-                                // 🆕 CREATE new request
-                                val newRequestId = dbRef.push().key
-                                if (newRequestId == null) {
-                                    isLoading = false
-                                    return@GradientButton
-                                }
-
-                                val newVisitorData = visitorData.copy(
-                                    requestId = newRequestId
-                                )
-
-                                dbRef.child(newRequestId).setValue(newVisitorData)
+                                val id = dbRef.push().key ?: return@GradientButton
+                                dbRef.child(id).setValue(data.copy(requestId = id))
                             }
 
-                            task
-                                .addOnSuccessListener {
-                                    isLoading = false
-
-                                    Toast.makeText(
-                                        context,
-                                        if (isEdit) "Request updated successfully"
-                                        else "Request submitted successfully",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-
-                                    // 🔥 trigger exit animation
-                                    visible = false
-
-                                    scope.launch {
-                                        delay(450) // SAME as animation duration
-                                        navController.navigate("pending") {
-                                            popUpTo("register") { inclusive = true }
-                                        }
+                            task.addOnSuccessListener {
+                                isLoading = false
+                                visible = false
+                                scope.launch {
+                                    delay(450)
+                                    navController.navigate("pending") {
+                                        popUpTo("register") { inclusive = true }
                                     }
                                 }
-                                .addOnFailureListener { e ->
-                                    isLoading = false
-                                    Log.e("FirebaseError", e.message ?: "Unknown error")
-                                }
+                            }
                         },
-
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 40.dp)
+                            .padding(horizontal = 32.dp)
                     )
+
+                    Spacer(Modifier.height(32.dp))
                 }
             }
         }
     }
-
-
-//    AnimatedVisibility(
-//        visible = visible,
-//        enter = slideInHorizontally(
-//            initialOffsetX = { fullWidth -> fullWidth }, // 👈 from right
-//            animationSpec = tween(200)
-//        ) + fadeIn(animationSpec = tween(200)),
-//
-//        exit = slideOutHorizontally(
-//            targetOffsetX = { fullWidth -> fullWidth }, // 👈 to right
-//            animationSpec = tween(200)
-//        ) + fadeOut(animationSpec = tween(200))
-//    ) {
-//        Scaffold(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .background( // ✅ GRADIENT HERE
-//                    brush = Brush.verticalGradient(
-//                        colors = listOf(
-//                            Color(0xFF2D30E3),
-//                            Color(0xFF8D6AAB),
-//                            Color(0xFF135DC4)
-//                        )
-//                    )
-//                ),
-//            topBar ={
-//                TopAppBar(
-//                    title ={Text(text = "Enter Details", fontSize = 30.sp)},
-//                    colors = TopAppBarDefaults.topAppBarColors(
-//                        containerColor = Color(0xFF4030D2),
-//                        titleContentColor = Color.White
-//                    )
-//                )
-//            },
-//            containerColor = Color.Transparent
-//        ) {padding->
-//            Column(
-//                modifier = Modifier.fillMaxSize()
-//                    .padding(padding)
-//                    .padding(horizontal = 14.dp, vertical = 12.dp)
-//                    .verticalScroll(rememberScrollState())
-//            ) {
-//                OutlinedTextField(
-//                    value = name,
-//                    onValueChange = {name = it},
-//                    enabled = !isLoading,
-//                    label = {Text("Full Name")},
-//                    leadingIcon = {
-//                        Icon(
-//                            Icons.Rounded.AccountCircle,
-//                            contentDescription = null,
-//                            tint = Color.White
-//                        )
-//                    },
-//                    supportingText = {
-//                        Text("Enter your full name as per ID", color = Color.White)
-//                    },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    shape = RoundedCornerShape(16.dp),
-//                    colors = outlinedFieldColors()
-//                )
-//
-//                Spacer(Modifier.height(12.dp))
-//
-//                OutlinedTextField(
-//                    value = phone,
-//                    onValueChange = { input ->
-//                        // allow only digits & max 10 characters
-//                        if (input.length <= 10 && input.all { it.isDigit() }) {
-//                            phone = input
-//                        }
-//                    },
-//                    enabled = !isLoading,
-//                    label = { Text("Mobile Number") },
-//                    leadingIcon = {
-//                        Icon(
-//                            Icons.Rounded.Phone,
-//                            contentDescription = null,
-//                            tint = Color.White
-//                        )
-//                    },
-//                    supportingText = {
-//                        Text(
-//                            text = "Enter ${phone.length}/10 digits Only",
-//                            color = Color.White
-//                        )
-//                    },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    shape = RoundedCornerShape(16.dp),
-//                    keyboardOptions = KeyboardOptions(
-//                        keyboardType = KeyboardType.Number
-//                    ),
-//                    colors = outlinedFieldColors()
-//                )
-//
-//                Spacer(Modifier.height(12.dp))
-//
-//                OutlinedTextField(
-//                    value = purpose,
-//                    onValueChange = {purpose = it},
-//                    enabled = !isLoading,
-//                    label = {Text("Purpose of Visit")},
-//                    leadingIcon = {
-//                        Icon(
-//                            Icons.Rounded.Edit,
-//                            contentDescription = null,
-//                            tint = Color.White
-//                        )
-//                    },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    shape = RoundedCornerShape(16.dp),
-//                    colors = outlinedFieldColors()
-//                )
-//
-//                Spacer(Modifier.height(12.dp))
-//
-//                OutlinedTextField(
-//                    value = persontomeet,
-//                    onValueChange = {persontomeet = it},
-//                    enabled = !isLoading,
-//                    label = {Text("Person to meet")},
-//                    leadingIcon = {
-//                        Icon(
-//                            Icons.Rounded.Person,
-//                            contentDescription = null,
-//                            tint = Color.White
-//                        )
-//                    },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    shape = RoundedCornerShape(16.dp),
-//                    colors = outlinedFieldColors()
-//                )
-//
-//                Spacer(Modifier.height(12.dp))
-//
-////                Box(
-////                    modifier = Modifier
-////                        .fillMaxWidth()
-////                        .clickable(enabled = !isLoading) {
-////                            showDatePicker = true
-////                        }
-////                ) {
-////                    OutlinedTextField(
-////                        value = visitDate,
-////                        onValueChange = {},
-////                        enabled = false,
-////                        readOnly = true,
-////                        label = { Text("Visit Date") },
-////                        leadingIcon = {
-////                            Icon(
-////                                Icons.Rounded.DateRange,
-////                                contentDescription = null,
-////                                tint = Color.White
-////                            )
-////                        },
-////                        modifier = Modifier.fillMaxWidth(),
-////                        shape = RoundedCornerShape(16.dp),
-////                        colors = outlinedFieldColors()
-////                    )
-////                }
-//
-//                OutlinedTextField(
-//                    value = visitDate,
-//                    onValueChange = {},
-//                    readOnly = true,
-//                    enabled = !isLoading,
-//                    label = { Text("Visit Date") },
-//                    leadingIcon = {
-//                        Icon(
-//                            Icons.Rounded.DateRange,
-//                            contentDescription = null,
-//                            tint = Color.White
-//                        )
-//                    },
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .onFocusChanged { focusState ->
-//                            if (focusState.isFocused && !isLoading) {
-//                                showDatePicker = true
-//                            }
-//                        },
-//                    shape = RoundedCornerShape(16.dp),
-//                    colors = outlinedFieldColors()
-//                )
-//
-//                if (showDatePicker) {
-//                    DatePickerDialog(
-//                        onDismissRequest = { showDatePicker = false },
-//                        confirmButton = {
-//                            TextButton(onClick = {
-//                                val millis = datePickerState.selectedDateMillis
-//                                if (millis != null) {
-//                                    val formatter = java.text.SimpleDateFormat(
-//                                        "dd MMM yyyy",
-//                                        java.util.Locale.getDefault()
-//                                    )
-//                                    visitDate = formatter.format(java.util.Date(millis))
-//                                }
-//                                showDatePicker = false
-//                            }) {
-//                                Text("OK")
-//                            }
-//                        },
-//                        dismissButton = {
-//                            TextButton(onClick = { showDatePicker = false }) {
-//                                Text("Cancel")
-//                            }
-//                        }
-//                    ) {
-//                        DatePicker(state = datePickerState)
-//                    }
-//                }
-//
-//                Spacer(Modifier.height(20.dp))
-//
-//                GradientButton(
-//                    text = if (isLoading) "Submitting..." else "Submit Request",
-//                    enabled = isFormValid && !isLoading,
-//                    onClick = {
-//                        isLoading = true
-//
-////                        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return@GradientButton
-//                        val uid = FirebaseAuth.getInstance().currentUser?.uid
-//                        if (uid == null) {
-//                            isLoading = false
-//                            return@GradientButton
-//                        }
-//
-//                        val visitorData = details(
-//                            requestId = requestId ?: "",
-//                            uid = uid,
-//                            name = name,
-//                            phone = phone,
-//                            purpose = purpose,
-//                            personToMeet = persontomeet,
-//                            visitDate = visitDate,
-//                            status = "PENDING",
-//                            timestamp = com.google.firebase.database.ServerValue.TIMESTAMP
-//                        )
-//
-//                        val dbRef = FirebaseDatabase.getInstance()
-//                            .getReference("visitorRequests")
-//
-//                        val task = if (isEdit && requestId != null) {
-//                            // 🔁 UPDATE existing request
-//                            dbRef.child(requestId!!).setValue(visitorData)
-//                        } else {
-//                            // 🆕 CREATE new request
-//                            val newRequestId = dbRef.push().key
-//                            if (newRequestId == null) {
-//                                isLoading = false
-//                                return@GradientButton
-//                            }
-//
-//                            val newVisitorData = visitorData.copy(
-//                                requestId = newRequestId
-//                            )
-//
-//                            dbRef.child(newRequestId).setValue(newVisitorData)
-//                        }
-//
-//                        task
-//                            .addOnSuccessListener {
-//                                isLoading = false
-//
-//                                Toast.makeText(
-//                                    context,
-//                                    if (isEdit) "Request updated successfully"
-//                                    else "Request submitted successfully",
-//                                    Toast.LENGTH_SHORT
-//                                ).show()
-//
-//                                navController.navigate("pending") {
-//                                    popUpTo("register") { inclusive = true }
-//                                }
-//                            }
-//                            .addOnFailureListener { e ->
-//                                isLoading = false
-//                                Log.e("FirebaseError", e.message ?: "Unknown error")
-//                            }
-//                    },
-//
-//                    modifier = Modifier
-//                        .fillMaxWidth()
-//                        .padding(horizontal = 40.dp)
-//                )
-//            }
-//        }
-//    }
 }
 
 

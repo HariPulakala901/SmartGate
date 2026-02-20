@@ -1,6 +1,5 @@
 package com.example.demo.screens
 
-import android.R.attr.visible
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
@@ -25,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,144 +42,12 @@ import androidx.navigation.NavHostController
 import com.airbnb.lottie.compose.*
 import com.example.demo.R
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.yourpackage.data.firebase.listenToStatus
+import com.google.firebase.database.ValueEventListener
 
-
-//@Composable
-//fun pendingscreen(navController: NavHostController) {
-//
-//    val context = LocalContext.current
-//
-//    var visible by remember { mutableStateOf(true) }
-//
-//    val composition by rememberLottieComposition(
-//        LottieCompositionSpec.RawRes(R.raw.one)
-//    )
-//
-//    val progress by animateLottieCompositionAsState(
-//        composition = composition,
-//        iterations = LottieConstants.IterateForever,
-//        speed = 0.7f
-//    )
-//
-//
-//    val alpha by rememberInfiniteTransition().animateFloat(
-//        initialValue = 0.4f,
-//        targetValue = 1f,
-//        animationSpec = infiniteRepeatable(
-//            animation = tween(1200),
-//            repeatMode = RepeatMode.Reverse
-//        )
-//    )
-//
-//    Box(
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .background(
-//                Brush.verticalGradient(
-//                    listOf(
-//                        Color(0xFF2D30E3),
-//                        Color(0xFF8D6AAB),
-//                        Color(0xFF135DC4)
-//                    )
-//                )
-//            )
-//    ){
-//        AnimatedVisibility(
-//            visible = visible,
-//            enter = slideInHorizontally(
-//                initialOffsetX = { fullWidth -> fullWidth }, // 👈 from right
-//                animationSpec = tween(200)
-//            ) + fadeIn(animationSpec = tween(200)),
-//
-//            exit = slideOutHorizontally(
-//                targetOffsetX = { fullWidth -> fullWidth }, // 👈 to right
-//                animationSpec = tween(200)
-//            ) + fadeOut(animationSpec = tween(200))
-//        )
-//    }
-//
-//    Column(
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .background(
-//                Brush.verticalGradient(
-//                    listOf(
-//                        Color(0xFF2D30E3),
-//                        Color(0xFF8D6AAB),
-//                        Color(0xFF135DC4)
-//                    )
-//                )
-//            ),
-//        verticalArrangement = Arrangement.Center,
-//        horizontalAlignment = Alignment.CenterHorizontally
-//    ) {
-//
-//        Box(
-//            modifier = Modifier
-//                .padding(24.dp)
-//                .background(
-//                    Color.White.copy(alpha = 0.12f),
-//                    RoundedCornerShape(20.dp)
-//                )
-//                .padding(vertical = 32.dp, horizontal = 24.dp),
-//            contentAlignment = Alignment.Center
-//        ) {
-//            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-//
-//                LottieAnimation(
-//                    composition = composition,
-//                    progress = { progress },
-//                    modifier = Modifier.size(240.dp)
-//                )
-//
-//                Spacer(modifier = Modifier.height(16.dp))
-//
-//                Text(
-//                    text = "Request Submitted",
-//                    color = Color.White,
-//                    fontSize = 22.sp,
-//                    fontWeight = FontWeight.SemiBold
-//                )
-//
-//                Spacer(modifier = Modifier.height(8.dp))
-//
-//                Text(
-//                    text = "Waiting for admin approval...",
-//                    color = Color.White.copy(alpha = alpha),
-//                    fontSize = 16.sp
-//                )
-//
-//                Spacer(modifier = Modifier.height(24.dp))
-//            }
-//        }
-//        GradientButton(
-//            text = "Update Request",
-//            onClick = {
-//                navController.navigate("register?edit=true")
-//            },
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(horizontal = 70.dp)
-//        )
-//
-//        Spacer(modifier = Modifier.height(16.dp))
-//
-//        GradientButton(
-//            text = "Delete Request",
-//            onClick = {
-//                deleteVisitorRequest(
-//                    navController = navController,
-//                    context = context
-//                )
-//            },
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(horizontal = 70.dp)
-//        )
-//
-//    }
-//}
 //
 //
 ////private fun deleteVisitorRequest(
@@ -242,7 +110,81 @@ private fun deleteVisitorRequest(
 fun pendingscreen(navController: NavHostController) {
 
     val context = LocalContext.current
+    val uid = FirebaseAuth.getInstance().currentUser?.uid
 
+    // 🔥 REALTIME STATUS LISTENER (CORRECT)
+//    DisposableEffect(uid) {
+//        if (uid == null) return@DisposableEffect onDispose {}
+//
+//        val statusListener = listenToStatus(uid) { status ->
+//            when (status) {
+//                "APPROVED" -> {
+//                    navController.navigate("approved") {
+//                        popUpTo("pending") { inclusive = true }
+//                    }
+//                }
+//                "REJECTED" -> {
+//                    navController.navigate("rejected") {
+//                        popUpTo("pending") { inclusive = true }
+//                    }
+//                }
+//            }
+//        }
+//
+//        onDispose {
+//            // ✅ CORRECT removal
+//            statusListener.query
+//                .removeEventListener(statusListener.listener)
+//        }
+//    }
+
+    DisposableEffect(uid) {
+        if (uid == null) return@DisposableEffect onDispose {}
+
+        val ref = FirebaseDatabase.getInstance()
+            .getReference("visitorRequests")
+
+        val query = ref
+            .orderByChild("uid")
+            .equalTo(uid)
+
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+
+                // 🔥 get latest request ONLY
+                val latestRequest = snapshot.children.maxByOrNull {
+                    it.child("timestamp").getValue(Long::class.java) ?: 0L
+                }
+
+                val status = latestRequest
+                    ?.child("status")
+                    ?.getValue(String::class.java)
+
+                when (status) {
+                    "APPROVED" -> {
+                        navController.navigate("approved") {
+                            popUpTo("pending") { inclusive = true }
+                        }
+                    }
+                    "REJECTED" -> {
+                        navController.navigate("rejected") {
+                            popUpTo("pending") { inclusive = true }
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        }
+
+        query.addValueEventListener(listener)
+
+        onDispose {
+            query.removeEventListener(listener)
+        }
+    }
+
+    // ---------- UI STATE ----------
     var visible by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
@@ -268,7 +210,7 @@ fun pendingscreen(navController: NavHostController) {
         )
     )
 
-    // ✅ BACKGROUND ALWAYS PRESENT
+    // ---------- UI ----------
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -282,18 +224,16 @@ fun pendingscreen(navController: NavHostController) {
                 )
             )
     ) {
-        // ✅ ONLY CONTENT IS ANIMATED
         AnimatedVisibility(
             visible = visible,
             enter = slideInHorizontally(
-                initialOffsetX = { fullWidth -> fullWidth }, // 👈 from right
+                initialOffsetX = { it },
                 animationSpec = tween(200)
-            ) + fadeIn(animationSpec = tween(200)),
-
+            ) + fadeIn(),
             exit = slideOutHorizontally(
-                targetOffsetX = { fullWidth -> fullWidth }, // 👈 to right
+                targetOffsetX = { it },
                 animationSpec = tween(200)
-            ) + fadeOut(animationSpec = tween(200))
+            ) + fadeOut()
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),

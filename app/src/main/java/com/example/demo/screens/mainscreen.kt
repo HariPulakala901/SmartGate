@@ -41,9 +41,111 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
 
+//@Composable
+//fun mainscreen(navController: NavHostController) {
+//    Box(modifier = Modifier.fillMaxSize()) {
+//        Image(
+//            painter = painterResource(id = R.drawable.img),
+//            contentDescription = null,
+//            modifier = Modifier.fillMaxSize(),
+//            contentScale = ContentScale.Crop
+//        )
+//
+//        Column(
+//            modifier = Modifier
+//                .fillMaxSize()
+//                .padding(24.dp),
+//            horizontalAlignment = Alignment.CenterHorizontally
+//        ) {
+//            Spacer(modifier = Modifier.height(150.dp))
+//
+//            Text(
+//                text = "SmartGate Visitor",
+//                color = Color.White,
+//                fontSize = 35.sp,
+//                fontWeight = FontWeight.Bold,
+//                textAlign = TextAlign.Center,
+//                modifier = Modifier.fillMaxWidth(),
+//                lineHeight = 34.sp
+//            )
+//
+//            Spacer(modifier = Modifier.height(12.dp))
+//
+//            Text(
+//                text = "Register your visit and wait for approval",
+//                color = Color.White.copy(alpha = 0.85f),
+//                fontSize = 20.sp,
+//                textAlign = TextAlign.Center
+//            )
+//
+//            // This takes all remaining space
+//            Spacer(modifier = Modifier.weight(1f))
+//
+//            GradientButton(
+//                text = "Visitor's Registration",
+//                onClick = {
+//                    val uid = FirebaseAuth.getInstance().currentUser?.uid
+//                    if (uid == null) {
+//                        navController.navigate("register")
+//                        return@GradientButton
+//                    }
+//
+//                    checkRequestStatus(
+//                        uid = uid,
+//                        onApproved = {
+//                            navController.navigate("approved")
+//                        },
+//                        onPending = {
+//                            navController.navigate("pending")
+//                        },
+//                        onNoRequest = {
+//                            navController.navigate("register")
+//                        }
+//                    )
+//                },
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 40.dp)
+//            )
+//
+//            Spacer(modifier = Modifier.height(32.dp))
+//
+//            GradientButton(
+//                text = "Visit History",
+//                onClick = {
+//                    navController.navigate("history")
+//                },
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 40.dp)
+//            )
+//
+//            Spacer(modifier = Modifier.height(32.dp))
+//
+//            Text(
+//                text = "Every visit verified.\n" +
+//                        "Every entry secured.",
+//                color = Color.White.copy(alpha = 0.9f),
+//                fontSize = 20.sp,
+//                textAlign = TextAlign.Center,
+//                modifier = Modifier.fillMaxWidth()
+//            )
+//
+//            Spacer(modifier = Modifier.height(40.dp))
+//        }
+//    }
+//}
+
+
+
+
 @Composable
 fun mainscreen(navController: NavHostController) {
+
+
     Box(modifier = Modifier.fillMaxSize()) {
+
+        // 🔹 Background
         Image(
             painter = painterResource(id = R.drawable.img),
             contentDescription = null,
@@ -51,51 +153,68 @@ fun mainscreen(navController: NavHostController) {
             contentScale = ContentScale.Crop
         )
 
+        // 🔹 TOP SECTION
         Column(
-            modifier = Modifier.fillMaxSize()
-                .padding(24.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 150.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(150.dp))
-
             Text(
                 text = "SmartGate Visitor",
                 color = Color.White,
-                fontSize = 35.sp,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-                lineHeight = 34.sp
+                textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
                 text = "Register your visit and wait for approval",
                 color = Color.White.copy(alpha = 0.85f),
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 textAlign = TextAlign.Center
             )
+        }
 
-            Spacer(modifier = Modifier.height(450.dp))
+        // 🔹 BOTTOM SECTION (FIXED POSITION)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
 
             GradientButton(
                 text = "Visitor's Registration",
                 onClick = {
-                    val uid = FirebaseAuth.getInstance().currentUser?.uid
-                    if (uid == null) {
-                        navController.navigate("register")
+
+                    val auth = FirebaseAuth.getInstance()
+                    val user = auth.currentUser
+
+                    if (user == null) {
+                        // 🔥 wait until auth is ready
+                        auth.signInAnonymously()
+                            .addOnSuccessListener {
+                                checkRequestStatus(
+                                    uid = it.user!!.uid,
+                                    onApproved = { navController.navigate("approved") },
+                                    onPending = { navController.navigate("pending") },
+                                    onRejected = { navController.navigate("rejected") },
+                                    onNoRequest = { navController.navigate("register") }
+                                )
+                            }
                         return@GradientButton
                     }
 
-                    checkPendingRequest(
-                        uid = uid,
-                        onPendingFound = {
-                            navController.navigate("pending")
-                        },
-                        onNoPending = {
-                            navController.navigate("register")
-                        }
+                    checkRequestStatus(
+                        uid = user.uid,
+                        onApproved = { navController.navigate("approved") },
+                        onPending = { navController.navigate("pending") },
+                        onRejected = { navController.navigate("rejected") },
+                        onNoRequest = { navController.navigate("register") }
                     )
                 },
                 modifier = Modifier
@@ -103,31 +222,121 @@ fun mainscreen(navController: NavHostController) {
                     .padding(horizontal = 40.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
+            GradientButton(
+                text = "Visit History",
+                onClick = { navController.navigate("history") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 40.dp)
+            )
+
+            Spacer(modifier = Modifier.height(22.dp))
+
+            Text(
+                text = "Every visit verified.\nEvery entry secured.",
+                color = Color.White.copy(alpha = 0.9f),
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+
+
+//@Composable
+//fun mainscreen(navController: NavHostController) {
+//    Box(modifier = Modifier.fillMaxSize()) {
+//        Image(
+//            painter = painterResource(id = R.drawable.img),
+//            contentDescription = null,
+//            modifier = Modifier.fillMaxSize(),
+//            contentScale = ContentScale.Crop
+//        )
+//
+//        Column(
+//            modifier = Modifier.fillMaxSize()
+//                .padding(24.dp),
+//            horizontalAlignment = Alignment.CenterHorizontally,
+//            verticalArrangement = Arrangement.SpaceBetween
+//        ) {
+//            Spacer(modifier = Modifier.height(150.dp))
+//
+//            Text(
+//                text = "SmartGate Visitor",
+//                color = Color.White,
+//                fontSize = 35.sp,
+//                fontWeight = FontWeight.Bold,
+//                textAlign = TextAlign.Center,
+//                modifier = Modifier.fillMaxWidth(),
+//                lineHeight = 34.sp
+//            )
+//
+//            Spacer(modifier = Modifier.height(12.dp))
+//
+//            Text(
+//                text = "Register your visit and wait for approval",
+//                color = Color.White.copy(alpha = 0.85f),
+//                fontSize = 20.sp,
+//                textAlign = TextAlign.Center
+//            )
+//
+//            Spacer(modifier = Modifier.weight(0.5f))
+//
 //            GradientButton(
-//                text = "Staff Access",
-//                onClick = { navController.navigate("login") },
+//                text = "Visitor's Registration",
+//                onClick = {
+//                    val uid = FirebaseAuth.getInstance().currentUser?.uid
+//                    if (uid == null) {
+//                        navController.navigate("register")
+//                        return@GradientButton
+//                    }
+//
+//                    checkPendingRequest(
+//                        uid = uid,
+//                        onPendingFound = {
+//                            navController.navigate("pending")
+//                        },
+//                        onNoPending = {
+//                            navController.navigate("register")
+//                        }
+//                    )
+//                },
 //                modifier = Modifier
 //                    .fillMaxWidth()
 //                    .padding(horizontal = 40.dp)
 //            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                text = "Every visit verified.\n" +
-                        "Every entry secured.",
-                color = Color.White.copy(alpha = 0.9f),
-                fontSize = 20.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-            )
-
-        }
-    }
-}
+//
+//            Spacer(modifier = Modifier.height(24.dp))
+//
+////            GradientButton(
+////                text = "Staff Access",
+////                onClick = { navController.navigate("login") },
+////                modifier = Modifier
+////                    .fillMaxWidth()
+////                    .padding(horizontal = 40.dp)
+////            )
+//
+//            Spacer(modifier = Modifier.height(24.dp))
+//
+//            Spacer(modifier = Modifier.height(32.dp))
+//
+//            Text(
+//                text = "Every visit verified.\n" +
+//                        "Every entry secured.",
+//                color = Color.White.copy(alpha = 0.9f),
+//                fontSize = 20.sp,
+//                textAlign = TextAlign.Center,
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//            )
+//
+//            Spacer(modifier = Modifier.height(32.dp))
+//        }
+//    }
+//}
 
 
 //@Composable
@@ -262,12 +471,109 @@ fun GradientButton(
     }
 }
 
-private fun checkPendingRequest(
+//private fun checkRequestStatus(
+//    uid: String,
+//    onApproved: () -> Unit,
+//    onPending: () -> Unit,
+//    onNoRequest: () -> Unit
+//) {
+//    Log.d("REQ_CHECK", "Checking request for uid = $uid")
+//
+//    val dbRef = FirebaseDatabase.getInstance()
+//        .getReference("visitorRequests")
+//
+//    dbRef
+//        .orderByChild("uid")
+//        .equalTo(uid)
+//        .get()
+//        .addOnSuccessListener { snapshot ->
+//
+//            var hasApproved = false
+//            var hasPending = false
+//
+//            snapshot.children.forEach { child ->
+//                val status = child.child("status").value?.toString()
+//                Log.d("REQ_CHECK", "Found status = $status")
+//
+//                when (status) {
+//                    "APPROVED" -> hasApproved = true
+//                    "PENDING" -> hasPending = true
+//                }
+//            }
+//
+//            when {
+//                hasApproved -> {
+//                    Log.d("REQ_CHECK", "Navigating to APPROVED")
+//                    onApproved()
+//                }
+//                hasPending -> {
+//                    Log.d("REQ_CHECK", "Navigating to PENDING")
+//                    onPending()
+//                }
+//                else -> {
+//                    Log.d("REQ_CHECK", "Navigating to REGISTER")
+//                    onNoRequest()
+//                }
+//            }
+//        }
+//        .addOnFailureListener { e ->
+//            Log.e("REQ_CHECK", "Firebase read failed", e)
+//            onNoRequest()
+//        }
+//}
+
+//private fun checkRequestStatus(
+//    uid: String,
+//    onApproved: () -> Unit,
+//    onPending: () -> Unit,
+//    onRejected: () -> Unit,
+//    onNoRequest: () -> Unit
+//) {
+//    val dbRef = FirebaseDatabase.getInstance()
+//        .getReference("visitorRequests")
+//
+//    dbRef
+//        .orderByChild("uid")
+//        .equalTo(uid)
+//        .get()
+//        .addOnSuccessListener { snapshot ->
+//
+//            if (!snapshot.exists()) {
+//                onNoRequest()
+//                return@addOnSuccessListener
+//            }
+//
+//            // 🔥 find latest request
+//            val latestRequest = snapshot.children
+//                .mapNotNull { it }
+//                .maxByOrNull {
+//                    it.child("timestamp").getValue(Long::class.java) ?: 0L
+//                }
+//
+//            val status = latestRequest
+//                ?.child("status")
+//                ?.getValue(String::class.java)
+//
+//            when (status) {
+//                "APPROVED" -> onApproved()
+//                "PENDING" -> onPending()
+//                "REJECTED" -> onRejected()
+//                else -> onNoRequest()
+//            }
+//        }
+//        .addOnFailureListener {
+//            onNoRequest()
+//        }
+//}
+
+private fun checkRequestStatus(
     uid: String,
-    onPendingFound: () -> Unit,
-    onNoPending: () -> Unit
+    onApproved: () -> Unit,
+    onPending: () -> Unit,
+    onRejected: () -> Unit,
+    onNoRequest: () -> Unit
 ) {
-    Log.d("PENDING_CHECK", "Checking pending for uid = $uid")
+    Log.d("REQ_CHECK", "START uid=$uid")
 
     val dbRef = FirebaseDatabase.getInstance()
         .getReference("visitorRequests")
@@ -277,32 +583,42 @@ private fun checkPendingRequest(
         .equalTo(uid)
         .get()
         .addOnSuccessListener { snapshot ->
-            Log.d("PENDING_CHECK", "Snapshot exists = ${snapshot.exists()}")
-            Log.d("PENDING_CHECK", "Children count = ${snapshot.childrenCount}")
 
-            var hasPending = false
+            Log.d("REQ_CHECK", "snapshot exists = ${snapshot.exists()}")
+            Log.d("REQ_CHECK", "children count = ${snapshot.childrenCount}")
 
-            snapshot.children.forEach { child ->
-                val status = child.child("status").value?.toString()
-                Log.d("PENDING_CHECK", "Found status = $status")
-
-                if (status == "PENDING") {
-                    hasPending = true
-                }
+            snapshot.children.forEach {
+                Log.d(
+                    "REQ_CHECK",
+                    "child=${it.key}, status=${it.child("status").value}, time=${it.child("timestamp").value}"
+                )
             }
 
-            if (hasPending) {
-                Log.d("PENDING_CHECK", "Navigating to PENDING screen")
-                onPendingFound()
-            } else {
-                Log.d("PENDING_CHECK", "Navigating to REGISTER screen")
-                onNoPending()
+            if (!snapshot.exists()) {
+                Log.d("REQ_CHECK", "NO REQUEST → REGISTER")
+                onNoRequest()
+                return@addOnSuccessListener
+            }
+
+            val latestRequest = snapshot.children.maxByOrNull {
+                it.child("timestamp").getValue(Long::class.java) ?: 0L
+            }
+
+            val status = latestRequest
+                ?.child("status")
+                ?.getValue(String::class.java)
+
+            Log.d("REQ_CHECK", "LATEST STATUS = $status")
+
+            when (status) {
+                "APPROVED" -> onApproved()
+                "PENDING" -> onPending()
+                "REJECTED" -> onRejected()
+                else -> onNoRequest()
             }
         }
         .addOnFailureListener { e ->
-            Log.e("PENDING_CHECK", "Firebase read failed", e)
-
-            // 🔥 IMPORTANT FALLBACK
-            onNoPending()
+            Log.e("REQ_CHECK", "FIREBASE FAILED", e)
+            onNoRequest()
         }
 }

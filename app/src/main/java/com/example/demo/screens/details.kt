@@ -9,5 +9,7 @@ data class details(
     val personToMeet: String = "",
     val visitDate: String = "",
     val status: String = "PENDING",
-    val timestamp: Any? = null
+    val timestamp: Any? = null,
+    val currentZone: String = "",
+    val lastZoneUpdate: Any? = null
 )

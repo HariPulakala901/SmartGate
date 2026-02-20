@@ -36,5 +36,19 @@ fun appnavigation(modifier: Modifier = Modifier) {
         composable("pending") {
             pendingscreen(navController)
         }
+        composable("rejected") {
+            rejectingscreen(navController)
+        }
+        composable("approved") {
+            approvedscreen(navController)
+        }
+        composable("history") {
+            historyscreen(navController)
+        }
+        composable("qr/{uid}/{requestId}") { backStackEntry ->
+            val uid = backStackEntry.arguments?.getString("uid")!!
+            val requestId = backStackEntry.arguments?.getString("requestId")!!
+            qrscreen(uid, requestId)
+        }
     }
 }
