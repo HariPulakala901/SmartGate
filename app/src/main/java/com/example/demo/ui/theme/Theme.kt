@@ -1,58 +1,52 @@
 package com.example.demo.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+// SmartGate always runs in dark mode — Liquid Glass is a dark-first design
+private val LiquidGlassDarkScheme = darkColorScheme(
+    primary          = AccentBlue,
+    onPrimary        = Color.White,
+    primaryContainer = IndigoGlass20,
+    onPrimaryContainer = TextPrimary,
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    secondary        = AccentIndigo,
+    onSecondary      = Color.White,
+    secondaryContainer = GlassWhite10,
+    onSecondaryContainer = TextPrimary,
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    tertiary         = AccentPurple,
+    onTertiary       = Color.White,
+
+    background       = BgDeep,
+    onBackground     = TextPrimary,
+
+    surface          = BgDark,
+    onSurface        = TextPrimary,
+    surfaceVariant   = BgMid,
+    onSurfaceVariant = TextSecondary,
+
+    outline          = GlassBorder18,
+    outlineVariant   = GlassBorder35,
+
+    error            = SemanticRed,
+    onError          = Color.White,
+    errorContainer   = RedGlass12,
+    onErrorContainer = SemanticRed,
+
+    scrim            = Color(0xCC000000)
 )
 
 @Composable
-fun DemoTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+fun SmartGateTheme(
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
+        colorScheme = LiquidGlassDarkScheme,
+        typography  = AppTypography,
+        content     = content
     )
 }

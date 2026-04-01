@@ -1,54 +1,94 @@
 package com.example.demo.screens
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
+import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun appnavigation(modifier: Modifier = Modifier) {
+fun Appnavigation(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
-    NavHost(navController, startDestination = "intro", modifier = modifier){
+    val context       = LocalContext.current
+
+    // Check SharedPreferences — true means onboarding already seen
+    val hasSeenOnboarding = remember {
+        context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .getBoolean("onboarding_complete", false)
+    }
+
+    // Start at onboarding if first launch, otherwise go straight to intro (home)
+    val startDestination = if (hasSeenOnboarding) "intro" else "onboarding"
+
+    NavHost(navController, startDestination = startDestination, modifier = modifier) {
 
         composable("intro") {
-            mainscreen(navController)
+            Mainscreen(navController)
         }
-        composable(
-            route = "register?edit={edit}",
-            arguments = listOf(
-                navArgument("edit") {
-                    defaultValue = "false"
+
+        composable("onboarding") {
+            OnboardingScreen(
+                navController     = navController,
+                onOnboardingComplete = {
+                    // Mark onboarding as done so it never shows again
+                    context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+                        .edit()
+                        .putBoolean("onboarding_complete", true)
+                        .apply()
+                    navController.navigate("intro") {
+                        popUpTo("onboarding") { inclusive = true }
+                    }
                 }
             )
+        }
+
+        composable(
+            route     = "register?edit={edit}",
+            arguments = listOf(navArgument("edit") { defaultValue = "false" })
         ) { backStackEntry ->
             val isEdit = backStackEntry.arguments?.getString("edit") == "true"
-            registerscreen(navController, isEdit = isEdit)
+            Registerscreen(navController, isEdit = isEdit)
         }
-        composable("login") { 
+
+        composable("login") {
             LoginScreen(navController)
         }
+
         composable("pending") {
-            pendingscreen(navController)
+            Pendingscreen(navController)
         }
+
         composable("rejected") {
-            rejectingscreen(navController)
+            Rejectingscreen(navController)
         }
+
         composable("approved") {
-            approvedscreen(navController)
+            Approvedscreen(navController)
         }
+
         composable("history") {
             historyscreen(navController)
         }
+
+        composable("flagged") {
+            Flaggedscreen(navController)
+        }
+
+        composable("live_zones") {
+            LiveZonesScreen(navController)
+        }
+
         composable("qr/{uid}/{requestId}") { backStackEntry ->
-            val uid = backStackEntry.arguments?.getString("uid")!!
-            val requestId = backStackEntry.arguments?.getString("requestId")!!
-            qrscreen(uid, requestId)
+            val uid       = backStackEntry.arguments?.getString("uid") ?: ""
+            val requestId = backStackEntry.arguments?.getString("requestId") ?: ""
+            Qrscreen(uid = uid, requestId = requestId, navController = navController)
         }
     }
 }

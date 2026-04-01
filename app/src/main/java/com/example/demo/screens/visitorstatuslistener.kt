@@ -1,12 +1,13 @@
-package com.yourpackage.data.firebase
+package com.example.demo.screens
 
 import com.google.firebase.database.*
-
 
 data class StatusListener(
     val query: Query,
     val listener: ValueEventListener
 )
+
+// FIX: Now consistently uses maxByOrNull on timestamp — same logic as all other screens
 fun listenToStatus(
     uid: String,
     onStatusChange: (String) -> Unit
@@ -19,7 +20,12 @@ fun listenToStatus(
 
     val listener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            val status = snapshot.children.firstOrNull()
+            // FIX: Pick latest request by timestamp — not firstOrNull which is unpredictable
+            val latestRequest = snapshot.children.maxByOrNull {
+                it.key.toString()
+            }
+
+            val status = latestRequest
                 ?.child("status")
                 ?.getValue(String::class.java)
 
@@ -27,14 +33,11 @@ fun listenToStatus(
         }
 
         override fun onCancelled(error: DatabaseError) {
-            // optional: log error
+            // No-op — caller handles navigation state
         }
     }
 
     query.addValueEventListener(listener)
 
-    return StatusListener(
-        query = query,
-        listener = listener
-    )
+    return StatusListener(query = query, listener = listener)
 }
